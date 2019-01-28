@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Async Gene&Iter</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/night.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<!-- <script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script> -->
+		<!-- --- -->
+		<!-- Fibonaci -->
+		<!--  -->
+		<script type="module">
+			function* fib(n) {
+				const isInfinite = n === undefined;
+				let current = 0;
+				let next = 1;
+
+				while (isInfinite || n--) {
+					yield current;
+					[current, next] = [next, current + next];
+				}
+			}
+
+			const fibIterator = fib();
+
+			window.nextFib = () => {
+				document.querySelector('#fibonacci').innerText = fibIterator.next().value;
+			}
+		</script>
+		<script type="module">
+			const ITEMS_PER_PAGE = 1;
+			const commitsIterator = getCommitsIterator();
+			let next, prev;
+
+			function parseLinkHeader(headerLink) {
+				let parts = headerLink.split(',');
+				let links = {};
+				
+				parts.forEach(part => {
+					let section = part.split(';');
+					let url = section[0].replace(/<(.*)>/, '$1').trim();
+					let name = section[1].replace(/rel="(.*)"/, '$1').trim();
+					links[name] = url;
+				});
+
+				return links;
+			}
+
+			async function* getCommitsIterator() {
+				let url = `https://api.github.com/repos/emberjs/ember.js/commits?per_page=${ITEMS_PER_PAGE}`;
+
+				while (url) {
+					const response = await fetch(url);
+					({ next, prev } = parseLinkHeader(response.headers.get('Link')));
+					url = yield response.json();
+				}
+			}
+
+			window.prevPage = async () =>  {
+				const nextPage = await commitsIterator.next(prev);
+				document.querySelector('#content').innerHTML = nextPage.value.shift().commit.message;
+			}
+
+			window.nextPage = async () =>  {
+				const nextPage = await commitsIterator.next(next);
+				document.querySelector('#content').innerHTML = nextPage.value.shift().commit.message;
+			}
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-markdown>
+					<textarea data-template>
+						## <span class="highlight">Async Iterators & Generators in ES2018</span>
+			
+						Author: Marcin Panek
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						### <span class="highlight">1. ES6 Iterators</span>
+
+
+						#### <span class="highlight">1. ES6 Iterators</span>
+						- Iterate over <span class="highlight">`Object, Class, Map, Set`</span> or any other container
+						- Implement <span class="highlight">`Symbol.iterator`</span> in container
+						- A <span class="highlight">`for ... of`</span> loop can be used to iterate over collection
+				
+
+
+						#### <span class="highlight">1. ES6 Iterators</span>
+						<img class="plain" src="images/iterable.png">
+
+
+						#### <span class="highlight">1. ES6 Iterators</span>
+						<img class="plain" src="images/iterator-next.png">
+
+
+						#### <span class="highlight">1. ES6 Iterators</span>
+						<img class="plain" src="images/for-of-loop.png">
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						### <span class="highlight">2. ES6 Generators</span>
+
+
+
+						#### <span class="highlight">2. ES6 Generators</span>
+						- Provide a higher-level abstraction to<span class="highlight"> `iterables`</span>
+						- Can operate on <span class="highlight">`streams` </span> 
+						- Preserve inner state and pause execution
+						- Memory efficient
+
+
+						#### <span class="highlight">2. ES6 Generators</span>
+						<img class="plain" src="images/generator.png">
+
+
+						#### <span class="highlight">2. ES6 Generators</span>
+						<img class="plain" src="images/generator-next.png">
+
+
+						#### <span class="highlight">2. ES6 Generators</span>
+						<img class="plain" src="images/for-of-loop.png">
+
+
+						#### <span class="highlight">2. ES6 Generators</span>
+						<img class="plain" src="images/fibonacci.png">
+
+						
+						#### <span class="highlight">2. ES6 Generators</span>
+						### <span class="highlight">Fibonacci Number Generator:</span>
+						<button class="btn btn-2 btn-2b" onclick="nextFib()">Next</button>
+						<h3 id="fibonacci">Start</h2>
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						### <span class="highlight">3. ES9 Async Iterators</span>
+
+
+						#### <span class="highlight">3. ES9 Async Iterators</span>
+						- An <span class="highlight">`Iterator`</span> that can handle <span class="highlight">`Promise`</span>
+						- Implement a <span class="highlight">`Symbol.asyncIterator`</span> function instead of <span class="highlight">`Symbol.iterator`</span>
+						- A <span class="highlight">`for await ... of`</span> loop can be used to iterate over collection
+				
+
+
+						#### <span class="highlight">3. ES9 Async Iterators</span>
+						<img class="plain" src="images/async-iterator.png">
+
+
+						#### <span class="highlight">3. ES9 Async Iterators</span>
+						### <span class="highlight">Async Iteration Pagination:</span>
+						<button class="btn btn-2 btn-2b" id="prev" onclick="prevPage()">Prev</button>
+        				<button class="btn btn-2 btn-2b" id="next" onclick="nextPage()">Next</button>   
+						<span id="content">Commit message:</span>
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						### <span class="highlight">4. ES9 Async Generators</span>
+
+
+						#### <span class="highlight">4. ES9 Async Generators</span>
+						- Provide higher level abstraction to <span class="highlight">`Async Iterables`</span>
+						- Concept similat to <span class="highlight">`Observable/Observer`</span> pattern with a difference that it behaves as a <span class="highlight">`Passive Producer`</span>???
+				
+					</textarea>
+				</section>
+				<!-- <section data-markdown>
+					<script type="text/template">
+						- Item 1 .element: class="fragment" data-fragment-index="1" 
+						- Item 2 .element: class="fragment" data-fragment-index="2" 
+					</script>
+				</section> -->
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
