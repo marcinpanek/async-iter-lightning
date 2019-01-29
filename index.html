@@ -41,12 +41,9 @@
 				document.querySelector('#fibonacci').innerText = fibIterator.next().value;
 			}
 		</script>
-		<script type="module">
-			const ITEMS_PER_PAGE = 1;
-			const commitsIterator = getCommitsIterator();
-			let next, prev;
-
-			function parseLinkHeader(headerLink) {
+		<script type="module">	
+			function parseLinkHeader(response) {
+				let headerLink = response.headers.get('Link');
 				let parts = headerLink.split(',');
 				let links = {};
 				
@@ -57,27 +54,32 @@
 					links[name] = url;
 				});
 
-				return links;
+				return links.next;
 			}
 
-			async function* getCommitsIterator() {
-				let url = `https://api.github.com/repos/emberjs/ember.js/commits?per_page=${ITEMS_PER_PAGE}`;
+			function updateTable({value}) {
+				const content = document.querySelector('#content');
+				content.innerHTML = value.items
+					.map(el => `<tr>
+									<td>${el.name}</td>
+									<td>${el.stargazers_count}</td>
+								</tr>`)
+					.join('');
+			}
 
+			async function* getJavaScriptReposIterator(url) {
 				while (url) {
 					const response = await fetch(url);
-					({ next, prev } = parseLinkHeader(response.headers.get('Link')));
-					url = yield response.json();
+					url = parseLinkHeader(response);
+					yield response.json();
 				}
 			}
 
-			window.prevPage = async () =>  {
-				const nextPage = await commitsIterator.next(prev);
-				document.querySelector('#content').innerHTML = nextPage.value.shift().commit.message;
-			}
+			const reposIterator = getJavaScriptReposIterator('https://api.github.com/search/repositories?q=stars:>=10000+language:js&sort=stars&order=desc&per_page=3');
 
 			window.nextPage = async () =>  {
-				const nextPage = await commitsIterator.next(next);
-				document.querySelector('#content').innerHTML = nextPage.value.shift().commit.message;
+				const nextPage = await reposIterator.next();
+				updateTable(nextPage);
 			}
 		</script>
 	</head>
@@ -88,67 +90,62 @@
 					<textarea data-template>
 						## <span class="highlight">Async Iterators & Generators in ES2018</span>
 			
-						Author: Marcin Panek
+						Marcin Panek
 					</textarea>
 				</section>
+				<section data-markdown class="no-dots">
+						<textarea data-template>
+								- #### <span class="highlight">1. Iterators</span>
+								- #### <span class="highlight">2. Generators</span>
+								- #### <span class="highlight">3. Async Iterators</span>
+								- #### <span class="highlight">4. Async Generators</span>
+								- #### <span class="highlight">5. When to use Async Iterators?</span>
+						</textarea>
+					</section>
 				<section 
 					data-separator-vertical="^\n\n"
 					data-markdown>
 					<textarea data-template>
-						### <span class="highlight">1. ES6 Iterators</span>
+						### <span class="highlight">1. Iterators</span>
 
 
-						#### <span class="highlight">1. ES6 Iterators</span>
-						- Iterate over <span class="highlight">`Object, Class, Map, Set`</span> or any other container
-						- Implement <span class="highlight">`Symbol.iterator`</span> in container
-						- A <span class="highlight">`for ... of`</span> loop can be used to iterate over collection
+						#### <span class="highlight">1. Iterators</span>
+						- Iterate over <span class="highlight">`Map, Array`</span> or a custom collection that comply to the <span class="highlight">`iterator protocol`</span>
+						- Implement <span class="highlight">`Symbol.iterator`</span>
+						- Use <span class="highlight">`for ... of`</span> loop to iterate over collection
 				
 
 
-						#### <span class="highlight">1. ES6 Iterators</span>
-						<img class="plain" src="images/iterable.png">
+						#### <span class="highlight">1. Iterators</span>
+						<span class="highlight">Class that implements itarator protocol</span>
+						<img class="plain" src="images/simple-iterator.png">
 
 
-						#### <span class="highlight">1. ES6 Iterators</span>
-						<img class="plain" src="images/iterator-next.png">
-
-
-						#### <span class="highlight">1. ES6 Iterators</span>
-						<img class="plain" src="images/for-of-loop.png">
+						#### <span class="highlight">1. Iterators</span>
+						<span class="highlight">Looping through the iterable</span>
+						<img class="plain" src="images/loop-through-iterable.png">
 					</textarea>
 				</section>
 				<section 
 					data-separator-vertical="^\n\n"
 					data-markdown>
 					<textarea data-template>
-						### <span class="highlight">2. ES6 Generators</span>
+						### <span class="highlight">2. Generators</span>
 
 
 
-						#### <span class="highlight">2. ES6 Generators</span>
+						#### <span class="highlight">2. Generators</span>
 						- Provide a higher-level abstraction to<span class="highlight"> `iterables`</span>
-						- Can operate on <span class="highlight">`streams` </span> 
 						- Preserve inner state and pause execution
-						- Memory efficient
+						- Use a keyword <span class="highlight">`yield`</span>
 
 
-						#### <span class="highlight">2. ES6 Generators</span>
-						<img class="plain" src="images/generator.png">
-
-
-						#### <span class="highlight">2. ES6 Generators</span>
-						<img class="plain" src="images/generator-next.png">
-
-
-						#### <span class="highlight">2. ES6 Generators</span>
-						<img class="plain" src="images/for-of-loop.png">
-
-
-						#### <span class="highlight">2. ES6 Generators</span>
-						<img class="plain" src="images/fibonacci.png">
+						#### <span class="highlight">2. Generators</span>
+						<span class="highlight">Fibonacci number generator</span>
+						<img class="plain" src="images/fib2.png">
 
 						
-						#### <span class="highlight">2. ES6 Generators</span>
+						#### <span class="highlight">2. Generators</span>
 						### <span class="highlight">Fibonacci Number Generator:</span>
 						<button class="btn btn-2 btn-2b" onclick="nextFib()">Next</button>
 						<h3 id="fibonacci">Start</h2>
@@ -158,38 +155,83 @@
 					data-separator-vertical="^\n\n"
 					data-markdown>
 					<textarea data-template>
-						### <span class="highlight">3. ES9 Async Iterators</span>
+						### <span class="highlight">3. Async Iterators</span>
 
 
-						#### <span class="highlight">3. ES9 Async Iterators</span>
+						#### <span class="highlight">3. Async Iterators</span>
 						- An <span class="highlight">`Iterator`</span> that can handle <span class="highlight">`Promise`</span>
 						- Implement a <span class="highlight">`Symbol.asyncIterator`</span> function instead of <span class="highlight">`Symbol.iterator`</span>
-						- A <span class="highlight">`for await ... of`</span> loop can be used to iterate over collection
+						- Use <span class="highlight">`for await .. of`</span> to iterate over collection
 				
 
 
-						#### <span class="highlight">3. ES9 Async Iterators</span>
-						<img class="plain" src="images/async-iterator.png">
-
-
-						#### <span class="highlight">3. ES9 Async Iterators</span>
-						### <span class="highlight">Async Iteration Pagination:</span>
-						<button class="btn btn-2 btn-2b" id="prev" onclick="prevPage()">Prev</button>
-        				<button class="btn btn-2 btn-2b" id="next" onclick="nextPage()">Next</button>   
-						<span id="content">Commit message:</span>
+						#### <span class="highlight">3. Async Iterators</span>
+						<span class="highlight">Iterate through mongoDB documents one by one</span>
+						<img class="plain" src="images/mongo-iterator.png">
 					</textarea>
 				</section>
 				<section 
 					data-separator-vertical="^\n\n"
 					data-markdown>
 					<textarea data-template>
-						### <span class="highlight">4. ES9 Async Generators</span>
+						### <span class="highlight">4. Async Generators</span>
 
 
-						#### <span class="highlight">4. ES9 Async Generators</span>
-						- Provide higher level abstraction to <span class="highlight">`Async Iterables`</span>
-						- Concept similat to <span class="highlight">`Observable/Observer`</span> pattern with a difference that it behaves as a <span class="highlight">`Passive Producer`</span>???
+						#### <span class="highlight">4. Async Generators</span>
+						- Works the same way as a generator but can handle <span class="highlight">`Promise`</span>
+						- Provide higher level abstraction to <span class="highlight">`Async Iterators`</span>
+
+
+						#### <span class="highlight">4. Async Generators</span>
+						<span class="highlight">Iterate through GitHub repositories</span>
+						<img class="plain" src="images/api-pagination-generator.png">
+
+
+
+						#### <span class="highlight">3. Async Iterators</span>
+						### <span class="highlight">Async GitHub API Iteration:</span>
+						<button class="btn btn-2 btn-2b" id="next" onclick="nextPage()">Next</button>
+						<table>
+							<thead>
+								<tr>
+									<th>Repository</th>
+									<th style="text-align: center">⭐</th>
+								</tr>
+							</thead>
+							<tbody id="content">
+									<tr>
+										<td>No data</td>
+									</tr>
+							</tbody>
+						</table>
 				
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						### <span class="highlight">5. When to use Async Iterators?</span>
+						
+
+						#### <span class="highlight">5. When to use Async Iterators?</span>
+						### Pros:
+						- They simplify the code
+						- Use when readability is key
+						
+
+						#### <span class="highlight">5. When to use Async Iterators?</span>
+						### Cons:
+						- Not as performant as other solutions ex. RxJS
+					</textarea>
+				</section>
+				<section 
+					data-separator-vertical="^\n\n"
+					data-markdown>
+					<textarea data-template>
+						## <span class="highlight">Thank You For Attention</span>
+
+						Presentation link: [goo.gl/P8fBEQ](http://goo.gl/P8fBEQ)
 					</textarea>
 				</section>
 				<!-- <section data-markdown>

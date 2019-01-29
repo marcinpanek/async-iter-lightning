@@ -1493,3 +1493,6 @@ body {
   line-height: 1;
   position: relative;
   -webkit-font-smoothing: antialiased; }
+
+.no-dots ul {
+  list-style-type: none !important; }
